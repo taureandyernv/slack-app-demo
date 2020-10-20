@@ -2,32 +2,30 @@ const Axios = require("axios");
 const fs = require('fs');
 var express = require("express");
 var router = express.Router();
-var path = "qids.txt";
+const config = require('../config');
 
 router.get("/", async function (req, res, next) {
 	//Stack overflow api string 
-	var soURL = 'https://api.stackexchange.com/2.2/search/advanced?order=desc&min='
-	var soURLmid = '&sort=creation&q='; 
-	var soURLend = '&site=stackoverflow';
+
 	var d = new Date();
 	var now = Math.round(d.getTime()/1000); //adjusts time to stackoverflow parameters
 	var day = 86400;
 	//1597688191
 
-	var keywords = ["cudf","cuml","cugraph","cusignal","cuspatial","cuxfilter","rmm","rapidsai","rapids", "blazingsql"];
+	var keywords = config.keywords;
 	console.log(keywords);
 	new_questions = []; //this array contains unanswered questions to be sent to slack
 	// Check to see if file exists.  If no, create a txt and an array to compare answers.  If yes, open file, then read question_ids from file
-	fs.access(path, fs.F_OK, (err) => {
+	fs.access(config.file_path, fs.F_OK, (err) => {
 		if (err) {
-			console.log("Qids.txt doesn't exists.  Creating...");
+			console.log(config.file_path+ " doesn't exists.  Creating...");
 			question_ids = [] //Start new question_ids which will create the file later
 			return
 		}
 
 		//file exists
-		console.log("Qids.txt exists.");
-		readMe = fs.readFileSync(path, 'utf8').split(',');
+		console.log(config.file_path + " exists.");
+		readMe = fs.readFileSync(config.file_path, 'utf8').split(',');
 		question_ids = readMe.map(function (x) { 
 		  return parseInt(x, 10); 
 		});
@@ -35,10 +33,10 @@ router.get("/", async function (req, res, next) {
 	//question_ids = []; //this array removes duplicate question alerts in the same search
 	
 	for(i=0; i<keywords.length; i++){
-	  console.log(soURL+ (now-(10*day))+ soURLmid + keywords[i]+soURLend);
+	  console.log(config.so.apiBaseURL+ (now-(config.so.daysBack*day))+ config.so.apiMidURL + keywords[i]+config.so.apiEndURL);
 	  console.log("getting result");		
 	  const result = await Axios.get(
-		soURL+ (now-(20*day))+ soURLmid + keywords[i]+soURLend
+		config.so.apiBaseURL + (now-(config.so.daysBack*day))+ config.so.apiMidURL + keywords[i]+config.so.apiEndURL
 	  );
 	  /*const lastRefreshed = result.data.items[0].
 	  //const lastClose = result.data.items[0].
@@ -59,20 +57,27 @@ router.get("/", async function (req, res, next) {
 		}
 	}
 	//Save new question_ids to file
-	writeMe = fs.writeFileSync(path, question_ids);
+	writeMe = fs.writeFileSync(config.file_path, question_ids);
 
 	  
 	  for(q=0; q<new_questions.length;q++){
 	  console.log("<"+new_questions[q].question_id+">");
-		  await Axios.post(
-			`https://hooks.slack.com/services/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`,
+	  if(config.testRun){
+		  postURL = config.slack.apiBaseUrl+config.slack.apiTestUrl;
+	  }else{
+		  postURL = config.slack.apiBaseUrl+config.slack.apiProdUrl;
+	  }
+	  console.log(postURL);
+		await Axios.post(
+			
+				postURL,
 			{
 				"blocks": [
 					{
 						"type": "section",
 						"text": {
 							"type": "mrkdwn",
-							"text": "We have a new, unanswered question about " + new_questions[q].keyword + " on StackOverflow:"
+							"text": "We have a new, unanswered question about \"" + new_questions[q].keyword + "\" on StackOverflow:"
 						}
 					},
 					{
@@ -80,7 +85,7 @@ router.get("/", async function (req, res, next) {
 						"block_id": "question_id",
 						"text": {
 							"type": "mrkdwn",
-							"text": "Question ID" + new_questions[q].question_id
+							"text": "Question ID: " + new_questions[q].question_id
 						}
 					},
 					{

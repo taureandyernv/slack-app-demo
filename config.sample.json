@@ -1,0 +1,17 @@
+{
+  "serverPort": 3000,
+  "keywords": ["cudf","cuml","cugraph","cusignal","cuspatial","cuxfilter","rmm","rapidsai","rapids", "blazingsql"],
+  "so": {
+    "apiBaseURL": "https://api.stackexchange.com/2.2/search/advanced?order=desc&min=",
+	"apiMidURL": "&sort=creation&q=",
+	"apiEndURL": "&site=stackoverflow",
+    "daysBack": 20
+  },
+  "slack": {
+    "apiBaseUrl": "https://hooks.slack.com/services/",
+    "apiTestUrl": "T5E06F3CN/B019...",
+	"apiProdUrl": "T5E06F3CN/B01A..."
+  },
+  "file_path": "XX.txt",
+  "testRun": true
+}
